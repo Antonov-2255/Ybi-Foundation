@@ -1,0 +1,76 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# Step 1: Load the Data
+url = 'https://github.com/YBIFoundation/Dataset/raw/main/Credit%20Default.csv'
+data = pd.read_csv(url)
+
+# Step 2: Explore the Data
+print("First few rows of the dataset:")
+print(data.head())
+print("\nSummary statistics of the dataset:")
+print(data.describe())
+print("\nChecking for missing values:")
+print(data.isnull().sum())
+
+# Step 3: Preprocess the Data
+# Identify the target and features
+target = 'default'
+features = data.drop(columns=[target]).columns
+
+# Define the preprocessing steps for numerical and categorical features
+numerical_features = data.select_dtypes(include=['int64', 'float64']).columns
+categorical_features = data.select_dtypes(include=['object']).columns
+
+numerical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='median')),
+    ('scaler', StandardScaler())
+])
+
+categorical_transformer = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+# Combine the preprocessing steps
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numerical_transformer, numerical_features),
+        ('cat', categorical_transformer, categorical_features)
+    ])
+
+# Preprocess the data
+X = data[features]
+y = data[target]
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 4: Train the Model
+# Define the model
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+
+# Create a pipeline that preprocesses the data and then trains the model
+clf = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('classifier', model)
+])
+
+# Train the model
+clf.fit(X_train, y_train)
+
+# Step 5: Evaluate the Model
+# Make predictions
+y_pred = clf.predict(X_test)
+
+# Evaluate the model
+print("\nModel Evaluation:")
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Classification Report:\n", classification_report(y_test, y_pred))
+print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
